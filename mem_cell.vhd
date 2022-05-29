@@ -53,6 +53,11 @@ architecture Behavioral of mem_cell is
     signal state_reg, state_nxt : state_type;
 -------------------------------------------------------------------
 
+signal bias_in      : std_logic_vector(27 downto 0);
+    
+signal result       : std_logic_vector(27 downto 0);    
+signal result_nxt   : std_logic_vector(27 downto 0);
+
 
 begin
 
@@ -70,9 +75,22 @@ begin
 
     case state_reg is 
     
-    when s_idle => 
+    when s_idle =>
+        ready <= '1'; 
+        if start = '1' then 
+            state_nxt <= s_first_op;
+        else 
+            state_nxt <= s_idle; 
+        end if;
     
     when s_first_op => 
+        if bias(7) = '1' then
+            bias_in <= "11111111111111" & bias & "000000";
+        else
+            bias_in <= "00000000000000" & bias & "000000";
+        end if;            
+            state_nxt <= s_op;
+    
     
     when s_op => 
     
@@ -82,11 +100,21 @@ begin
 
 end process;
 
+with state_reg select 
+result_nxt <= 
+    (others => '0') when s_idle, 
+    std_logic_vector(shift_right(signed(w1)*signed(x1) + signed(w2)*signed(x2) + signed(w3)*signed(x3) + signed(w4)*signed(x4) + 
+    signed(w5)*signed(x5) + signed(w6)*signed(x6) + signed(w7)*signed(x7) + signed(w8)*signed(x8), 7) + signed(bias_in)) when others;
 
 
 
-
-
+result_reg: FF 
+  generic map(N => 28)
+  port map(   D     =>result_nxt,
+              Q     =>result,
+            clk     =>clk,
+            reset   =>reset
+      );
 
 
 end Behavioral;
