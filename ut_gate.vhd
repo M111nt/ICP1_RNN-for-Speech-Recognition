@@ -46,10 +46,12 @@ end ut_gate;
 
 architecture Behavioral of ut_gate is
 
-    signal bias_in      : std_logic_vector(15 downto 0);
+    signal bias_in      : std_logic_vector(27 downto 0);
     
-    signal result       : std_logic_vector(23 downto 0);    
-    signal result_nxt   : std_logic_vector(23 downto 0);
+    signal result       : std_logic_vector(27 downto 0);    
+    signal result_nxt   : std_logic_vector(27 downto 0);
+    
+    signal valid_in     : std_logic;
 
 --ff---------------------------------------------------------------
 component ff is
@@ -79,11 +81,12 @@ begin
     end if;         
 end process;
 
-state: process (state_reg, start, input_done, bias)
+state: process (state_reg, start, input_done, bias, h_prev_done, op_done, result)
 
 begin
     ready <= '0';
     valid <= '0';
+    valid_in <= '0';
 
     case state_reg is
         
@@ -97,9 +100,9 @@ begin
             
         when s_first_op => 
             if bias(7) = '1' then
-                bias_in <= "1111111111" & bias & "000000";
+                bias_in <= "11111111111111" & bias & "000000";
             else
-                bias_in <= "0000000000" & bias & "000000";
+                bias_in <= "00000000000000" & bias & "000000";
             end if;            
             state_nxt <= s_op;
             
@@ -112,6 +115,7 @@ begin
                 if h_prev_done = '1' then 
                     if op_done = '1' then 
                         valid <= '1';
+                        valid_in <= '1';
                         state_nxt <= s_idle;
                     else 
                         state_nxt <= s_first_op;
@@ -137,14 +141,14 @@ result_nxt <=
     signed(w5)*signed(x5) + signed(w6)*signed(x6) + signed(w7)*signed(x7) + signed(w8)*signed(x8), 7) + signed(bias_in)) when others;
     --shift right 7 bit to keep all integer
 
-with valid select 
+with valid_in select 
 out_data <= 
     (others => '0') when '0',
     result(22 downto 7) when '1';--the highest bit always be 0, so it should be not considered in 16-bit result 
     
 
 result_reg: FF 
-  generic map(N => 24)
+  generic map(N => 28)
   port map(   D     =>result_nxt,
               Q     =>result,
             clk     =>clk,
